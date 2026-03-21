@@ -35,13 +35,16 @@ public class OptimizationOrchestrator {
     /**
      * El punto de entrada principal para iniciar un trabajo de Fuerza Bruta.
      */
-    public void runOptimization(String dataPath, TradingStrategy strategy, List<ParameterRange> ranges) {
+    public void runOptimization(String dataPath, TradingStrategy strategy) {
         
         System.out.println("==================================================");
         System.out.println("🚀 INICIANDO LABORATORIO DE FUERZA BRUTA");
         System.out.println("Estrategia a evaluar: " + strategy.getStrategyName());
         System.out.println("Buscando la Meseta de Robustez...");
         System.out.println("==================================================");
+
+        // EXTRAER dinámicamente qué combinaciones matemáticas pide esta estrategia
+        List<ParameterRange> ranges = strategy.getParameterDefinitions();
 
         // 1. Cargar datos a la RAM (Solo ocurre una vez, el Provider maneja carpetas o archivos)
         System.out.println("Cargando histórico en memoria RAM...");

@@ -4,22 +4,18 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 public interface TradingStrategy {
-
-    String getStrategyName();
-
-    void setParameters(Map<String, BigDecimal> parameters);
-
+    // El motor le pasa un mapa genérico (ej: "periodo" -> 14)
+    void setParameters(Map<String, BigDecimal> params);
+    
+    // La estrategia expone qué parámetros está usando actualmente
     Map<String, BigDecimal> getCurrentParameters();
 
-    /**
-     * Devuelve la dirección de la operación (LONG, SHORT, NEUTRAL)
-     */
     TradeDirection evaluateEntry(MarketTick tick);
-
-    /**
-     * Evalúa la salida pasándole la posición actual
-     */
-    boolean evaluateExit(MarketTick tick, TradeDirection currentPosition);
+    boolean evaluateExit(MarketTick tick, TradeDirection currentDirection);
     
     void resetState();
+    String getStrategyName();
+
+    // Nueva responsabilidad: La estrategia le dice al motor qué parámetros probar
+    java.util.List<com.zFrameWork.zEngine.engine.optimizer.ParameterRange> getParameterDefinitions();
 }

@@ -21,15 +21,13 @@ public class OptimizationResult {
     @Column(name = "job_execution_id")
     private String jobExecutionId;
 
-    // --- PARÁMETROS DE LA ESTRATEGIA ---
-    @Column(name = "ema_rapida", precision = 10, scale = 2)
-    private BigDecimal emaRapida;
+    @Column(name = "strategy_name")
+    private String strategyName;
 
-    @Column(name = "ema_lenta", precision = 10, scale = 2)
-    private BigDecimal emaLenta;
-
-    @Column(name = "ema_gatillo", precision = 10, scale = 2)
-    private BigDecimal emaGatillo;
+    // --- PARÁMETROS GENÉRICOS ---
+    // Persistimos el mapa completo como un String JSON (Soporta estrategias con 3, 5, 20 parámetros)
+    @Column(name = "parameters_json", columnDefinition = "TEXT")
+    private String parametersJson;
 
     // --- RESULTADOS AGREGADOS (Para la Meseta de Robustez) ---
     @Column(name = "total_trades")

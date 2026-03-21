@@ -1,5 +1,6 @@
 package com.zFrameWork.zEngine.engine.backtest;
 
+import com.zFrameWork.zEngine.core.risk.RiskManager;
 import com.zFrameWork.zEngine.core.strategy.MarketTick;
 import com.zFrameWork.zEngine.core.strategy.TradeDirection;
 import com.zFrameWork.zEngine.core.strategy.TradingStrategy;
@@ -9,113 +10,107 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class BacktestEngine {
 
-    public OptimizationResult run(TradingStrategy strategy, List<MarketTick> historicalData, String jobExecutionId) {
-        
-        TradeDirection currentPosition = TradeDirection.NEUTRAL;
-        BigDecimal entryPrice = BigDecimal.ZERO;
-        
-        BigDecimal initialCapital = new BigDecimal("1300.00");
-        BigDecimal currentCapital = initialCapital;
-        
-        // Gestión de Riesgo: 1.5% del capital actual
-        BigDecimal riskPct = new BigDecimal("1.5"); 
-        BigDecimal stopLossPrice = BigDecimal.ZERO;
-        BigDecimal currentPositionSize = BigDecimal.ZERO;
+    private final RiskManager riskManager;
 
-        // Contadores
+    public BacktestEngine(RiskManager riskManager) {
+        this.riskManager = riskManager;
+    }
+
+    public OptimizationResult run(TradingStrategy strategy, List<MarketTick> historicalData, String jobId) {
+        BigDecimal initialCapital = new BigDecimal("1300");
+        BigDecimal currentCapital = initialCapital;
+        BigDecimal maxCapital = initialCapital;
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
+
         int totalTrades = 0;
         int winningTrades = 0;
-        BigDecimal peakCapital = initialCapital; 
-        BigDecimal maxDrawdownUsd = BigDecimal.ZERO;
+
+        TradeDirection currentPosition = TradeDirection.NEUTRAL;
+        BigDecimal entryPrice = BigDecimal.ZERO;
+        BigDecimal positionSize = BigDecimal.ZERO;
 
         strategy.resetState();
+        riskManager.reset(initialCapital);
 
         for (MarketTick tick : historicalData) {
-            
-            // 1. LÓGICA DE ENTRADA (Cruce de EMAs en 1h, 4h, 12h)
             if (currentPosition == TradeDirection.NEUTRAL) {
                 TradeDirection signal = strategy.evaluateEntry(tick);
                 if (signal != TradeDirection.NEUTRAL) {
                     currentPosition = signal;
-                    entryPrice = tick.getClose(); 
-                    
-                    // Calcular Riesgo en USD (Ej: 1300 * 0.015 = $19.50)
-                    BigDecimal riskUsdAmount = currentCapital.multiply(riskPct.divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP));
-                    
-                    // Fijamos un Stop Loss técnico inicial (1.5% de distancia del precio)
-                    BigDecimal slDistancePct = riskPct.divide(new BigDecimal("100"), 8, RoundingMode.HALF_UP);
-                    
-                    if (currentPosition == TradeDirection.LONG) {
-                        stopLossPrice = entryPrice.subtract(entryPrice.multiply(slDistancePct));
-                    } else {
-                        stopLossPrice = entryPrice.add(entryPrice.multiply(slDistancePct));
+                    entryPrice = tick.getClose(); // Suponiendo ejecución a precio de cierre de la vela gatillo
+                    positionSize = riskManager.calculatePositionSize(entryPrice, currentCapital);
+                }
+            } else {
+                boolean hitSL = riskManager.hitStopLoss(tick, currentPosition, entryPrice);
+                boolean strategyExit = strategy.evaluateExit(tick, currentPosition);
+
+                if (strategyExit || hitSL) {
+                    // Si toca SL priorizamos cerrar al precio del SL como penalización (simulación
+                    // conservadora)
+                    BigDecimal exitPrice = hitSL
+                            ? (currentPosition == TradeDirection.LONG ? entryPrice.multiply(new BigDecimal("0.98")) : // 2%
+                                                                                                                      // SL
+                                                                                                                      // aprox
+                                    entryPrice.multiply(new BigDecimal("1.02")))
+                            : tick.getClose();
+
+                    BigDecimal profitLoss = riskManager.calculateProfitLoss(currentPosition, entryPrice, exitPrice,
+                            positionSize);
+                    currentCapital = currentCapital.add(profitLoss);
+
+                    totalTrades++;
+                    if (profitLoss.compareTo(BigDecimal.ZERO) > 0) {
+                        winningTrades++;
                     }
 
-                    // Calcular Tamaño de Posición Dinámico
-                    BigDecimal priceDistance = entryPrice.subtract(stopLossPrice).abs();
-                    currentPositionSize = riskUsdAmount.divide(priceDistance, 8, RoundingMode.HALF_UP);
-                }
-            } 
-            // 2. LÓGICA DE SALIDA DINÁMICA (Trend Following Puro)
-            else {
-                boolean hitSl = false;
-                
-                // A. Verificar si el precio tocó el Stop Loss de protección (Catástrofe)
-                if (currentPosition == TradeDirection.LONG && tick.getLow().compareTo(stopLossPrice) <= 0) hitSl = true;
-                else if (currentPosition == TradeDirection.SHORT && tick.getHigh().compareTo(stopLossPrice) >= 0) hitSl = true;
-
-                // B. Verificar si el indicador (EMA Gatillo) ordena salir (Cambio de tendencia)
-                boolean signalExit = strategy.evaluateExit(tick, currentPosition);
-
-                if (hitSl || signalExit) {
-                    BigDecimal exitPrice = hitSl ? stopLossPrice : tick.getClose();
-
-                    BigDecimal tradeProfitUsd = calculateRealUsdProfit(currentPosition, entryPrice, exitPrice, currentPositionSize);
-                    
-                    currentCapital = currentCapital.add(tradeProfitUsd);
-                    totalTrades++;
-                    
-                    if (tradeProfitUsd.compareTo(BigDecimal.ZERO) > 0) winningTrades++;
-
-                    // Tracking de Drawdown
-                    if (currentCapital.compareTo(peakCapital) > 0) peakCapital = currentCapital;
-                    BigDecimal currentDrawdown = peakCapital.subtract(currentCapital);
-                    if (currentDrawdown.compareTo(maxDrawdownUsd) > 0) maxDrawdownUsd = currentDrawdown;
+                    if (currentCapital.compareTo(maxCapital) > 0) {
+                        maxCapital = currentCapital;
+                    } else {
+                        // Calcular Drawdown (MaxCap - CurrCap) / MaxCap
+                        BigDecimal drawdown = maxCapital.subtract(currentCapital)
+                                .divide(maxCapital, 8, RoundingMode.HALF_UP)
+                                .multiply(new BigDecimal("100"));
+                        if (drawdown.compareTo(maxDrawdown) > 0) {
+                            maxDrawdown = drawdown;
+                        }
+                    }
 
                     currentPosition = TradeDirection.NEUTRAL;
-
-                    if (currentCapital.compareTo(BigDecimal.ZERO) <= 0) break;
                 }
             }
         }
 
         BigDecimal netProfit = currentCapital.subtract(initialCapital);
-        Map<String, BigDecimal> params = strategy.getCurrentParameters();
+        BigDecimal winRate = totalTrades > 0
+                ? new BigDecimal(winningTrades).divide(new BigDecimal(totalTrades), 4, RoundingMode.HALF_UP)
+                        .multiply(new BigDecimal("100"))
+                : BigDecimal.ZERO;
 
-        return OptimizationResult.builder()
-                .jobExecutionId(jobExecutionId)
-                .emaRapida(params.getOrDefault("emaFast", BigDecimal.ZERO))
-                .emaLenta(params.getOrDefault("emaSlow", BigDecimal.ZERO))
-                .emaGatillo(params.getOrDefault("emaGatillo", BigDecimal.ZERO))
-                .totalTrades(totalTrades)
-                .winRatePct(calculateWinRate(winningTrades, totalTrades))
-                .netProfitUsd(netProfit)
-                .maxDrawdown(maxDrawdownUsd)
-                .build();
+        return buildResult(jobId, strategy, totalTrades, winRate, netProfit, maxDrawdown);
     }
 
-    private BigDecimal calculateRealUsdProfit(TradeDirection dir, BigDecimal entry, BigDecimal exit, BigDecimal size) {
-        BigDecimal diff = (dir == TradeDirection.LONG) ? exit.subtract(entry) : entry.subtract(exit);
-        return diff.multiply(size).setScale(2, RoundingMode.HALF_UP);
-    }
+    private OptimizationResult buildResult(String jobId, TradingStrategy strategy, int totalTrades, BigDecimal winRate,
+            BigDecimal netProfit, BigDecimal maxDrawdown) {
+        OptimizationResult result = new OptimizationResult();
+        result.setJobExecutionId(jobId);
+        result.setStrategyName(strategy.getStrategyName());
+        result.setTotalTrades(totalTrades);
+        result.setWinRatePct(winRate);
+        result.setNetProfitUsd(netProfit);
+        result.setMaxDrawdown(maxDrawdown);
+        // --- SERIALIZANDO PARÁMETROS GENÉRICOS A JSON ---
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            String json = mapper.writeValueAsString(strategy.getCurrentParameters());
+            result.setParametersJson(json);
+        } catch (Exception e) {
+            System.err.println("Error serializando parámetros a JSON: " + e.getMessage());
+        }
 
-    private BigDecimal calculateWinRate(int win, int total) {
-        if (total == 0) return BigDecimal.ZERO;
-        return new BigDecimal(win).divide(new BigDecimal(total), 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100")).setScale(2, RoundingMode.HALF_UP);
+        return result;
     }
 }
