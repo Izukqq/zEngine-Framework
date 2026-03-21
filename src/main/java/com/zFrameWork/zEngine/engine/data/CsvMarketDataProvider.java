@@ -8,6 +8,8 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -29,22 +31,40 @@ import com.zFrameWork.zEngine.core.strategy.MarketTick;
 public class CsvMarketDataProvider implements MarketDataProvider {
 
     @Override
-    public List<MarketTick> loadData(String filePath) {
-        List<MarketTick> ticks = new ArrayList<>();
+    public List<MarketTick> loadData(String path) {
+        List<MarketTick> allTicks = new ArrayList<>();
+        File source = new File(path);
 
+        if (!source.exists()) {
+            throw new RuntimeException("Error: La ruta histórica no existe -> " + path);
+        }
+
+        if (source.isDirectory()) {
+            System.out.println("Cargando directorio completo de datos históricos...");
+            File[] files = source.listFiles((dir, name) -> name.toLowerCase().endsWith(".csv"));
+            if (files != null) {
+                // Ordenar por nombre para mantener el orden cronológico (2019-01, 2019-02...)
+                Arrays.sort(files, Comparator.comparing(File::getName));
+                for (File file : files) {
+                    allTicks.addAll(loadSingleFile(file.getAbsolutePath()));
+                }
+            }
+        } else {
+            allTicks.addAll(loadSingleFile(path));
+        }
+
+        System.out.println("✅ TOTAL de datos históricos inyectados: " + allTicks.size() + " velas listas.");
+        return allTicks;
+    }
+
+    private List<MarketTick> loadSingleFile(String filePath) {
+        List<MarketTick> ticks = new ArrayList<>();
         String symbol = extractSymbolFromFileName(filePath);
 
         try (CSVReader reader = new CSVReader(new FileReader(filePath))) {
             String[] line;
-
-            // Eliminamos la lógica de saltar la primera línea, ya que tu CSV no tiene
-            // cabeceras.
             while ((line = reader.readNext()) != null) {
-
-                // Columna 0: Timestamp en milisegundos (ej. 1769904000000)
                 long epochMillis = Long.parseLong(line[0].trim());
-                // Convertimos el Timestamp a LocalDateTime usando la zona horaria UTC (Estándar
-                // de Binance)
                 LocalDateTime time = LocalDateTime.ofInstant(Instant.ofEpochMilli(epochMillis), ZoneId.of("UTC"));
 
                 MarketTick tick = MarketTick.builder()
@@ -59,9 +79,7 @@ public class CsvMarketDataProvider implements MarketDataProvider {
 
                 ticks.add(tick);
             }
-
-            System.out.println("✅ Datos históricos inyectados: " + ticks.size() + " velas de " + symbol + " listas.");
-
+            System.out.println(" - Archivo cargado: " + new File(filePath).getName() + " (" + ticks.size() + " velas)");
         } catch (IOException | CsvValidationException e) {
             throw new RuntimeException("Error fatal al leer el archivo CSV en la ruta: " + filePath, e);
         }
