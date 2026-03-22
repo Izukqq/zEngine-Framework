@@ -5,6 +5,8 @@ import com.zFrameWork.zEngine.core.strategy.MarketTick;
 import com.zFrameWork.zEngine.core.strategy.TradeDirection;
 import com.zFrameWork.zEngine.core.strategy.TradingStrategy;
 import com.zFrameWork.zEngine.model.entity.OptimizationResult;
+import com.zFrameWork.zEngine.model.entity.OptimizationJob;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -16,12 +18,15 @@ public class BacktestEngine {
 
     private final RiskManager riskManager;
 
+    @Value("${zengine.backtest.initial-capital:1300}")
+    private String initialCapitalConfig;
+
     public BacktestEngine(RiskManager riskManager) {
         this.riskManager = riskManager;
     }
 
-    public OptimizationResult run(TradingStrategy strategy, List<MarketTick> historicalData, String jobId) {
-        BigDecimal initialCapital = new BigDecimal("1300");
+    public OptimizationResult run(TradingStrategy strategy, List<MarketTick> historicalData, OptimizationJob job) {
+        BigDecimal initialCapital = new BigDecimal(initialCapitalConfig);
         BigDecimal currentCapital = initialCapital;
         BigDecimal maxCapital = initialCapital;
         BigDecimal maxDrawdown = BigDecimal.ZERO;
@@ -90,13 +95,13 @@ public class BacktestEngine {
                         .multiply(new BigDecimal("100"))
                 : BigDecimal.ZERO;
 
-        return buildResult(jobId, strategy, totalTrades, winRate, netProfit, maxDrawdown);
+        return buildResult(job, strategy, totalTrades, winRate, netProfit, maxDrawdown);
     }
 
-    private OptimizationResult buildResult(String jobId, TradingStrategy strategy, int totalTrades, BigDecimal winRate,
+    private OptimizationResult buildResult(OptimizationJob job, TradingStrategy strategy, int totalTrades, BigDecimal winRate,
             BigDecimal netProfit, BigDecimal maxDrawdown) {
         OptimizationResult result = new OptimizationResult();
-        result.setJobExecutionId(jobId);
+        result.setOptimizationJob(job);
         result.setStrategyName(strategy.getStrategyName());
         result.setTotalTrades(totalTrades);
         result.setWinRatePct(winRate);

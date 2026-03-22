@@ -18,8 +18,10 @@ public class OptimizationResult {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "job_execution_id")
-    private String jobExecutionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private OptimizationJob optimizationJob;
 
     @Column(name = "strategy_name")
     private String strategyName;

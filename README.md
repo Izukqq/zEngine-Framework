@@ -1,73 +1,187 @@
-zEngine FrameWork de Trading
+# ⚡ zEngine — Framework de Investigación Cuantitativa para Trading
 
-Professional High-Performance Trading Backtest & Optimization Framework
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![License](https://img.shields.io/badge/Licencia-MIT-blue?style=flat-square)
 
-zEngine es un framework de investigación cuantitativa desarrollado en Java 21+ y Spring Boot 4. A diferencia de los bots de trading convencionales, zEngine no busca el "mejor resultado puntual", sino la Meseta de Robustez: zonas de parámetros donde la estrategia sobrevive a diferentes ciclos de mercado sin caer en el overfitting (sobre-optimización).
+**zEngine** es un framework profesional de backtesting y optimización para estrategias de trading cuantitativo. A diferencia de los bots de trading convencionales que buscan el "mejor resultado puntual", zEngine identifica **Mesetas de Robustez** — zonas de parámetros donde la estrategia sobrevive a diferentes ciclos de mercado sin caer en el overfitting (sobre-optimización).
 
-Objetivo del Proyecto
-El fin de este framework es proporcionar una herramienta científica para el desarrollo de estrategias. Permite:
+---
 
-Fuerza Bruta Masiva: Probar miles de combinaciones de parámetros en segundos.
+## 🎯 Características Principales
 
-Validación de Robustez: Identificar si una estrategia es sólida o si su éxito es solo producto del azar.
+- **🔬 Fuerza Bruta (Grid Search)** — Prueba miles de combinaciones de parámetros en segundos
+- **📊 Heatmap 2D de Robustez** — Mapa de calor interactivo con escala de color divergente (Rojo → Gris → Verde) mapeando el Beneficio Neto al color de cada celda
+- **🧬 Dimension Slicing** — Explora espacios de parámetros N-dimensionales mediante sliders dinámicos que filtran cortes 2D del heatmap
+- **💰 Gestión de Riesgo Realista** — Position sizing con riesgo porcentual fijo e interés compuesto
+- **🧩 Arquitectura Agnóstica de Estrategias** — Agrega nuevas estrategias como beans `@Component` de Spring — sin modificar el núcleo
+- **📈 Dashboard Full-Stack** — Interfaz React con estética Glassmorphism para configurar, ejecutar y visualizar optimizaciones
 
-Gestión de Riesgo Real: Simulación de capital con Position Sizing Dinámico (Riesgo porcentual fijo) e interés compuesto.
+---
 
-Arquitectura y Estándares 
-Este proyecto ha sido construido bajo estándares de ingeniería de software de nivel Senior, cumpliendo con los siguientes principios:
+## 🏗️ Arquitectura
 
-SOLID Principles:
+```
+zEngine/
+├── src/main/java/com/zFrameWork/zEngine/
+│   ├── core/                    # Abstracciones de dominio
+│   │   ├── indicator/           #   Interfaz Indicator<T,R> + implementaciones EMA, RSI, Wilder
+│   │   ├── strategy/            #   Interfaz TradingStrategy, MarketTick, TradeDirection
+│   │   └── risk/                #   RiskManager (position sizing, stop-loss)
+│   ├── engine/                  # Capa de ejecución
+│   │   ├── backtest/            #   BacktestEngine — simulador de corrida única
+│   │   ├── optimizer/           #   OptimizationOrchestrator — coordinador del grid search
+│   │   └── data/                #   CsvMarketDataProvider — cargador de datos históricos
+│   ├── examples/                # Estrategias plug-and-play
+│   │   ├── TripleEmaStrategy    #   Cruce de 3 EMAs (3 params, 462 combos)
+│   │   ├── RsiStrategy          #   RSI sobrecompra/sobreventa (3 params, 96 combos)
+│   │   └── TripleWilderStrategy #   Variante con Wilder's Smoothing
+│   ├── model/entity/            # Entidades JPA (OptimizationJob, OptimizationResult)
+│   ├── repository/              # Repositorios Spring Data JPA
+│   ├── web/                     # Controladores REST + DTOs
+│   └── config/                  # CORS, WebConfig
+├── src/main/resources/
+│   ├── application.properties   # Configuración BD vía variables de entorno
+│   └── historical_data/         # Velas BTC/USDT 15min (2019)
+└── zEngine-ui/                  # Frontend React + Vite
+    └── src/
+        ├── components/          # PlateauVisualizer, ExecutionModal, StrategyCard
+        ├── services/            # apiClient.js (consumidor REST)
+        └── index.css            # Sistema de diseño Glassmorphism
+```
 
-Open/Closed: El motor está cerrado a la modificación pero abierto a la extensión (puedes añadir nuevas estrategias sin tocar el core).
+### Principios de Diseño
 
-Interface Segregation: El motor solo conoce la interfaz TradingStrategy, no la implementación.
+| Principio | Aplicación |
+|---|---|
+| **Abierto/Cerrado** | El motor está cerrado a modificación, abierto a extensión mediante nuevos beans `TradingStrategy` |
+| **Segregación de Interfaces** | El motor depende de la interfaz `TradingStrategy`, nunca de implementaciones concretas |
+| **Strategy Pattern** | Cada algoritmo de trading es un componente autocontenido e intercambiable |
+| **Orchestrator Pattern** | `OptimizationOrchestrator` coordina el ciclo de vida del grid search y la persistencia de jobs |
 
-Clean Architecture: Separación clara entre el núcleo de negocio (core), el motor de ejecución (engine) y la capa de persistencia (model/repository).
+---
 
-Design Patterns: Uso de Strategy Pattern para los algoritmos de trading y Orchestrator Pattern para la ejecución de tareas complejas.
+## 🚀 Cómo Empezar
 
-High Performance: Procesamiento de archivos CSV masivos en memoria RAM con complejidad O(n) para garantizar velocidad institucional.
+### Requisitos Previos
 
-Configuración de Ejemplo (Trend Following)
-El framework viene pre-configurado en el paquete examples con la TripleEmaStrategy. Esta estrategia utiliza una jerarquía de temporalidades para filtrar el ruido del mercado:
+- **Java 21+** y **Maven 3.6+**
+- **PostgreSQL 14+** — crear una base de datos llamada `zengine`
+- **Node.js 18+** y **npm**
 
-EMA Gatillo (1h): Disparador de entrada/salida.
+### 1. Clonar y Configurar
 
-EMA Rápida (4h): Contexto de tendencia inmediata.
+```bash
+git clone https://github.com/TU_USUARIO/zEngine.git
+cd zEngine
+```
 
-EMA Lenta (12h): Filtro de tendencia mayor (Institucional).
+Configura tus credenciales de base de datos mediante variables de entorno:
 
-Gestión de Riesgo configurada:
+```bash
+export DB_URL=jdbc:postgresql://localhost:5432/zengine
+export DB_USERNAME=postgres
+export DB_PASSWORD=tu_password_seguro
+```
 
-Riesgo por Operación: 1.5% del capital actual.
+> **Tip:** En Windows, usa `set` en lugar de `export`, o crea un archivo `.env` (ignorado por git).
 
-Salida: Dinámica por cruce de indicadores (Corte rápido de pérdidas, dejar correr ganancias).
+### 2. Iniciar el Backend
 
-Datos Históricos (/historical_data)
-El repositorio incluye una carpeta de datos con archivos CSV reales de Bitcoin (BTC/USDT).
-
-Estructura: Los archivos siguen el formato estándar de Binance (Timestamp, Open, High, Low, Close, Volume).
-
-Carga Masiva: El MarketDataProvider está diseñado para leer todos los archivos de la carpeta automáticamente y ordenarlos cronológicamente antes de iniciar la simulación.
-
-Cómo empezar
-Requisitos: Java 17+, Maven 3.6+ y PostgreSQL.
-
-Base de Datos: Crea una base de datos en Postgres llamada zengine_db.
-
-Configuración: Ajusta tus credenciales en src/main/resources/application.properties.
-
-Ejecución: ```bash
+```bash
 mvn clean install
 mvn spring-boot:run
+```
 
-Análisis: Una vez finalizado, abre tu herramienta SQL preferida (pgAdmin) y exporta la tabla optimization_results a un CSV para analizar la meseta de robustez en Excel o Python.
+El servidor API se levantará en `http://localhost:8080`.
 
-🛠️ Escalabilidad
-zEngine es una base "Vanilla" lista para escalar:
+### 3. Iniciar el Frontend
 
-Integración con APIs de Brokers (Binance, Alpaca).
+```bash
+cd zEngine-ui
+npm install
+npm run dev
+```
 
-Implementación de modelos de Machine Learning como estrategias.
+Abre `http://localhost:5173` en tu navegador.
 
-![alt text](image.png)
+### 4. Ejecutar Tu Primera Optimización
+
+1. Haz clic en cualquier tarjeta de estrategia en el dashboard
+2. Configura los rangos de parámetros (min/max/step)
+3. Presiona **"Ejecutar Fuerza Bruta"**
+4. Una vez completada, haz clic en **"Abrir Meseta de Robustez"** para ver el heatmap
+5. Para estrategias de 3+ parámetros, usa los sliders de **Dimension Slice** para explorar diferentes cortes
+
+---
+
+## 🧩 Crea Tu Propia Estrategia
+
+Implementa `TradingStrategy` y anota con `@Component`:
+
+```java
+@Component
+public class MiEstrategia implements TradingStrategy {
+
+    @Override
+    public String getStrategyName() { return "Mi_Estrategia_Custom"; }
+
+    @Override
+    public List<ParameterRange> getParameterDefinitions() {
+        return List.of(
+            new ParameterRange("param1", new BigDecimal("10"), new BigDecimal("50"), new BigDecimal("5")),
+            new ParameterRange("param2", new BigDecimal("1"),  new BigDecimal("10"), new BigDecimal("1"))
+        );
+    }
+
+    @Override
+    public void applyParameters(Map<String, BigDecimal> params) { /* ... */ }
+
+    @Override
+    public TradeDirection evaluateEntry(MarketTick tick) { /* ... */ }
+
+    @Override
+    public boolean evaluateExit(MarketTick tick, TradeDirection pos) { /* ... */ }
+}
+```
+
+Reinicia el backend — tu estrategia aparecerá automáticamente en el dashboard.
+
+---
+
+## ⚙️ Configuración
+
+Todas las propiedades configurables viven en `src/main/resources/application.properties`:
+
+| Propiedad | Valor por Defecto | Descripción |
+|---|---|---|
+| `DB_URL` | `jdbc:postgresql://localhost:5432/zengine` | URL de conexión a PostgreSQL |
+| `DB_USERNAME` | `postgres` | Usuario de base de datos |
+| `DB_PASSWORD` | `changeme` | Contraseña de base de datos |
+| `zengine.backtest.initial-capital` | `1300` | Capital inicial (USD) para los backtests |
+
+---
+
+## 📊 Datos Históricos
+
+El repositorio incluye 12 meses de velas de 15 minutos de BTC/USDT (2019) en `src/main/resources/historical_data/`. Los archivos siguen el formato CSV de Binance:
+
+```
+Timestamp, Open, High, Low, Close, Volume
+```
+
+`CsvMarketDataProvider` carga automáticamente y ordena cronológicamente todos los archivos `.csv` de ese directorio.
+
+---
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT — ver [LICENSE](LICENSE) para más detalles.
+
+
+Proyecto de investigación cuantitativa para trading generado mediante Agentes de IA.
+
+-Gemini Pro 3.1 high
+-Claude Opus 4.6
