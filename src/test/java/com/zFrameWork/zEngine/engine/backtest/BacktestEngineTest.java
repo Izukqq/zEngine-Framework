@@ -5,6 +5,7 @@ import com.zFrameWork.zEngine.core.strategy.MarketTick;
 import com.zFrameWork.zEngine.core.strategy.TradeDirection;
 import com.zFrameWork.zEngine.core.strategy.TradingStrategy;
 import com.zFrameWork.zEngine.model.entity.OptimizationResult;
+import com.zFrameWork.zEngine.model.entity.OptimizationJob;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -102,7 +103,9 @@ public class BacktestEngineTest {
                 .thenReturn(new BigDecimal("-4.00")); // Loss = (98-100)*2 = -4 usd
 
         // --- 3. EXECUTE ENGINE ---
-        OptimizationResult result = backtestEngine.run(strategyMock, simulatedMarket, "Test-Job-123");
+        OptimizationJob dummyJob = new OptimizationJob();
+        dummyJob.setId("Test-Job-123");
+        OptimizationResult result = backtestEngine.run(strategyMock, simulatedMarket, dummyJob);
 
         // --- 4. ASSERTIONS ---
         // Capital Inicial Hardcodeado en el Engine: 1300
