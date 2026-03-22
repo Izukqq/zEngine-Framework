@@ -22,6 +22,16 @@ buildNumber.properties
 bin/
 out/
 
+# --- Node / Frontend ---
+node_modules/
+zEngine-ui/dist/
+
+# --- Environment & Secrets ---
+.env
+*.env
+application-local.properties
+application-dev.properties
+
 # --- Log files ---
 *.log
 logs/
@@ -31,6 +41,6 @@ logs/
 Thumbs.db
 desktop.ini
 
+# --- Root orphan deps ---
+/package-lock.json
 HELP.md
-**/application-local.properties
-**/application-dev.properties
