@@ -1,4 +1,4 @@
-# ⚡ zEngine — Framework de Investigación Cuantitativa para Trading
+#  zEngine — Framework de Investigación Cuantitativa para Trading
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
@@ -10,18 +10,18 @@
 
 ---
 
-## 🎯 Características Principales
+##  Características Principales
 
-- **🔬 Fuerza Bruta (Grid Search)** — Prueba miles de combinaciones de parámetros en segundos
-- **📊 Heatmap 2D de Robustez** — Mapa de calor interactivo con escala de color divergente (Rojo → Gris → Verde) mapeando el Beneficio Neto al color de cada celda
-- **🧬 Dimension Slicing** — Explora espacios de parámetros N-dimensionales mediante sliders dinámicos que filtran cortes 2D del heatmap
-- **💰 Gestión de Riesgo Realista** — Position sizing con riesgo porcentual fijo e interés compuesto
-- **🧩 Arquitectura Agnóstica de Estrategias** — Agrega nuevas estrategias como beans `@Component` de Spring — sin modificar el núcleo
-- **📈 Dashboard Full-Stack** — Interfaz React con estética Glassmorphism para configurar, ejecutar y visualizar optimizaciones
+- ** Fuerza Bruta (Grid Search)** — Prueba miles de combinaciones de parámetros en segundos
+- ** Heatmap 2D de Robustez** — Mapa de calor interactivo con escala de color divergente (Rojo → Gris → Verde) mapeando el Beneficio Neto al color de cada celda
+- ** Dimension Slicing** — Explora espacios de parámetros N-dimensionales mediante sliders dinámicos que filtran cortes 2D del heatmap
+- ** Gestión de Riesgo Realista** — Position sizing con riesgo porcentual fijo e interés compuesto
+- ** Arquitectura Agnóstica de Estrategias** — Agrega nuevas estrategias como beans `@Component` de Spring — sin modificar el núcleo
+- ** Dashboard Full-Stack** — Interfaz React con estética Glassmorphism para configurar, ejecutar y visualizar optimizaciones
 
 ---
 
-## 🏗️ Arquitectura
+##  Arquitectura
 
 ```
 zEngine/
@@ -63,7 +63,7 @@ zEngine/
 
 ---
 
-## 🚀 Cómo Empezar
+##  Cómo Empezar
 
 ### Requisitos Previos
 
@@ -117,7 +117,7 @@ Abre `http://localhost:5173` en tu navegador.
 
 ---
 
-## 🧩 Crea Tu Propia Estrategia
+##  Crea Tu Propia Estrategia
 
 Implementa `TradingStrategy` y anota con `@Component`:
 
@@ -151,7 +151,7 @@ Reinicia el backend — tu estrategia aparecerá automáticamente en el dashboar
 
 ---
 
-## ⚙️ Configuración
+##  Configuración
 
 Todas las propiedades configurables viven en `src/main/resources/application.properties`:
 
@@ -164,7 +164,7 @@ Todas las propiedades configurables viven en `src/main/resources/application.pro
 
 ---
 
-## 📊 Datos Históricos
+##  Datos Históricos
 
 El repositorio incluye 12 meses de velas de 15 minutos de BTC/USDT (2019) en `src/main/resources/historical_data/`. Los archivos siguen el formato CSV de Binance:
 
@@ -176,7 +176,7 @@ Timestamp, Open, High, Low, Close, Volume
 
 ---
 
-## 📄 Licencia
+##  Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT — ver [LICENSE](LICENSE) para más detalles.
 
